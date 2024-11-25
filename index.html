@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR Code Attendance System</title>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html5-qrcode/minified/html5-qrcode.min.js"></script>
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(to right, #6a11cb, #2575fc);
+      color: #fff;
+    }
+    h1, h2 {
+      text-align: center;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+    .container {
+      max-width: 800px;
+      margin: 20px auto;
+      background: #fff;
+      color: #333;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      padding: 20px;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      margin: 15px 0;
+    }
+    .form-group label {
+      margin-bottom: 5px;
+      font-weight: 500;
+    }
+    .form-group input {
+      padding: 10px;
+      font-size: 16px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+    button {
+      padding: 10px 15px;
+      font-size: 16px;
+      font-weight: bold;
+      border: none;
+      border-radius: 5px;
+      background: #6a11cb;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+    button:hover {
+      background: #2575fc;
+    }
+    canvas {
+      margin: 10px auto;
+      display: block;
+    }
+    #reader {
+      width: 300px;
+      margin: 20px auto;
+      border: 2px dashed #2575fc;
+      border-radius: 10px;
+      padding: 10px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      padding: 10px;
+      border: 1px solid #ddd;
+      text-align: center;
+    }
+    th {
+      background: #2575fc;
+      color: #fff;
+      font-weight: bold;
+    }
+    tbody tr:nth-child(odd) {
+      background: #f9f9f9;
+    }
+    tbody tr:nth-child(even) {
+      background: #efefef;
+    }
+  </style>
+</head>
+<body>
+  <h1>QR Code Attendance System</h1>
+
+  <div class="container">
+    <h2>Generate QR Code</h2>
+    <div class="form-group">
+      <label for="studentName">Student Name</label>
+      <input type="text" id="studentName" placeholder="Enter Student Name">
+    </div>
+    <div class="form-group">
+      <label for="admissionNumber">Admission Number</label>
+      <input type="text" id="admissionNumber" placeholder="Enter Admission Number">
+    </div>
+    <button onclick="generateQRCode()">Generate QR Code</button>
+    <canvas id="qrcodeCanvas"></canvas>
+  </div>
+
+  <div class="container">
+    <h2>Scan QR Code</h2>
+    <div id="reader"></div>
+    <p id="scanResult" style="font-weight: bold; color: #2575fc; text-align: center; margin-top: 10px;"></p>
+  </div>
+
+  <div class="container">
+    <h2>Attendance Sheet</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Student Name</th>
+          <th>Admission Number</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="attendanceTable"></tbody>
+    </table>
+  </div>
+
+  <script>
+    const attendanceTable = document.getElementById('attendanceTable');
+
+    // Load attendance from localStorage on page load
+    window.onload = function () {
+      const data = localStorage.getItem('attendanceData');
+      if (data) {
+        const attendance = JSON.parse(data);
+        attendance.forEach(({ name, admission, status }) => {
+          const newRow = attendanceTable.insertRow();
+          newRow.insertCell(0).innerText = name;
+          newRow.insertCell(1).innerText = admission;
+          newRow.insertCell(2).innerText = status;
+        });
+      }
+    };
+
+    // Save attendance to localStorage
+    function saveAttendanceToLocalStorage() {
+      const rows = [...attendanceTable.rows].map(row => ({
+        name: row.cells[0].innerText,
+        admission: row.cells[1].innerText,
+        status: row.cells[2].innerText
+      }));
+      localStorage.setItem('attendanceData', JSON.stringify(rows));
+    }
+
+    // Generate QR Code
+    function generateQRCode() {
+      const name = document.getElementById('studentName').value.trim();
+      const admission = document.getElementById('admissionNumber').value.trim();
+
+      if (!name || !admission) {
+        alert("Please enter both Student Name and Admission Number.");
+        return;
+      }
+
+      const qrData = JSON.stringify({ name, admission });
+      const canvas = document.getElementById('qrcodeCanvas');
+
+      QRCode.toCanvas(canvas, qrData, (error) => {
+        if (error) console.error(error);
+        console.log("QR Code generated!");
+      });
+    }
+
+    // QR Code Scanner
+    const scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
+
+    scanner.render((decodedText) => {
+      try {
+        const data = JSON.parse(decodedText);
+        const { name, admission } = data;
+
+        // Check if already marked
+        const existingRow = [...attendanceTable.rows].find(row => row.cells[1].innerText === admission);
+        if (existingRow) {
+          alert(`${name} has already been marked present.`);
+          return;
+        }
+
+        // Add to attendance table
+        const newRow = attendanceTable.insertRow();
+        newRow.insertCell(0).innerText = name;
+        newRow.insertCell(1).innerText = admission;
+        newRow.insertCell(2).innerText = "Present";
+
+        // Save to localStorage
+        saveAttendanceToLocalStorage();
+
+        document.getElementById('scanResult').innerText = `Marked Present: ${name}`;
+      } catch (error) {
+        alert("Invalid QR Code!");
+      }
+    });
+  </script>
+</body>
+</html>
