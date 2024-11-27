@@ -119,8 +119,8 @@
     <table>
       <thead>
         <tr>
-          <th>Admission Number</th>
           <th>Student Name</th>
+          <th>Admission Number</th>
           <th>Status</th>
         </tr>
       </thead>
@@ -136,10 +136,10 @@
       const data = localStorage.getItem('attendanceData');
       if (data) {
         const attendance = JSON.parse(data);
-        attendance.forEach(({ admission, name, status }) => {
+        attendance.forEach(({ name, admission, status }) => {
           const newRow = attendanceTable.insertRow();
-          newRow.insertCell(0).innerText = admission;
-          newRow.insertCell(1).innerText = name;
+          newRow.insertCell(0).innerText = name;
+          newRow.insertCell(1).innerText = admission;
           newRow.insertCell(2).innerText = status;
         });
       }
@@ -148,8 +148,8 @@
     // Save attendance to localStorage
     function saveAttendanceToLocalStorage() {
       const rows = [...attendanceTable.rows].map(row => ({
-        admission: row.cells[0].innerText,
-        name: row.cells[1].innerText,
+        name: row.cells[0].innerText,
+        admission: row.cells[1].innerText,
         status: row.cells[2].innerText
       }));
       localStorage.setItem('attendanceData', JSON.stringify(rows));
@@ -183,7 +183,7 @@
         const { name, admission } = data;
 
         // Check if already marked
-        const existingRow = [...attendanceTable.rows].find(row => row.cells[0].innerText === admission);
+        const existingRow = [...attendanceTable.rows].find(row => row.cells[1].innerText === admission);
         if (existingRow) {
           alert(`${name} has already been marked present.`);
           return;
@@ -191,8 +191,8 @@
 
         // Add to attendance table
         const newRow = attendanceTable.insertRow();
-        newRow.insertCell(0).innerText = admission;
-        newRow.insertCell(1).innerText = name;
+        newRow.insertCell(0).innerText = name;
+        newRow.insertCell(1).innerText = admission;
         newRow.insertCell(2).innerText = "Present";
 
         // Save to localStorage
