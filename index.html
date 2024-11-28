@@ -128,6 +128,12 @@
     </table>
   </div>
 
+  <div class="container">
+    <h2>Manage Data</h2>
+    <button onclick="clearAttendanceData()">Clear Attendance Data</button>
+    <p id="clearStatus" style="font-weight: bold; color: red; text-align: center; margin-top: 10px;"></p>
+  </div>
+
   <script>
     const attendanceTable = document.getElementById('attendanceTable');
 
@@ -203,6 +209,15 @@
         alert("Invalid QR Code!");
       }
     });
+
+    // Function to clear attendance data from local storage
+    function clearAttendanceData() {
+      if (confirm("Are you sure you want to clear all attendance data?")) {
+        localStorage.removeItem('attendanceData');
+        attendanceTable.innerHTML = ''; // Clear the table
+        document.getElementById('clearStatus').innerText = "Attendance data cleared successfully!";
+      }
+    }
   </script>
 </body>
 </html>
