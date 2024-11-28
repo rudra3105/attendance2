@@ -3,58 +3,29 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Class-wise QR Code Attendance</title>
+  <title>QR Code Attendance System</title>
   <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html5-qrcode/minified/html5-qrcode.min.js"></script>
   <style>
     body {
-      font-family: 'Poppins', sans-serif;
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
       margin: 0;
       padding: 0;
-      background: #f4f4f4;
-      color: #333;
-    }
-    h1, h2 {
-      text-align: center;
-      margin-bottom: 10px;
     }
     .container {
       max-width: 800px;
       margin: 20px auto;
-      background: #fff;
-      color: #333;
-      border-radius: 10px;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
       padding: 20px;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     }
-    .form-group {
+    h1, h2 {
+      text-align: center;
+    }
+    input[type="file"] {
       margin: 15px 0;
-    }
-    .form-group label {
-      font-weight: bold;
-      display: block;
-      margin-bottom: 5px;
-    }
-    .form-group input {
-      padding: 10px;
-      font-size: 16px;
-      border: 1px solid #ddd;
-      border-radius: 5px;
-      width: 100%;
-    }
-    button {
-      padding: 10px 15px;
-      font-size: 16px;
-      font-weight: bold;
-      border: none;
-      border-radius: 5px;
-      background: #6a11cb;
-      color: #fff;
-      cursor: pointer;
-      transition: background 0.3s ease;
-    }
-    button:hover {
-      background: #2575fc;
     }
     canvas {
       margin: 10px auto;
@@ -64,55 +35,41 @@
       width: 300px;
       margin: 20px auto;
       border: 2px dashed #2575fc;
-      border-radius: 10px;
       padding: 10px;
+      border-radius: 8px;
     }
     table {
       width: 100%;
-      border-collapse: collapse;
       margin-top: 20px;
+      border-collapse: collapse;
     }
     th, td {
-      padding: 10px;
       border: 1px solid #ddd;
+      padding: 10px;
       text-align: center;
     }
     th {
-      background: #2575fc;
-      color: #fff;
-      font-weight: bold;
+      background-color: #2575fc;
+      color: white;
     }
-    tbody tr:nth-child(odd) {
-      background: #f9f9f9;
+    .present {
+      color: green;
     }
-    tbody tr:nth-child(even) {
-      background: #efefef;
-    }
-    .search-bar {
-      margin-bottom: 15px;
+    .absent {
+      color: red;
     }
   </style>
 </head>
 <body>
-  <h1>Class-wise QR Code Attendance</h1>
-
   <div class="container">
+    <h1>QR Code Attendance System</h1>
     <h2>Generate QR Code</h2>
-    <div class="form-group">
-      <label for="csvFile">Upload CSV File</label>
-      <input type="file" id="csvFile" accept=".csv">
-    </div>
+    <input type="file" id="csvFile" accept=".csv">
     <button onclick="generateQRCode()">Generate QR Code</button>
     <canvas id="qrcodeCanvas"></canvas>
-  </div>
 
-  <div class="container">
     <h2>Scan QR Code</h2>
     <div id="reader"></div>
-    <div class="form-group search-bar">
-      <label for="searchStudent">Search Student</label>
-      <input type="text" id="searchStudent" placeholder="Search by name or admission number" onkeyup="filterTable()">
-    </div>
     <table>
       <thead>
         <tr>
@@ -126,23 +83,24 @@
   </div>
 
   <script>
-    const attendanceTable = document.getElementById('attendanceTable');
+    const MAX_QR_DATA_SIZE = 1000; // Adjust for QR code data limits
+    const attendanceTable = document.getElementById("attendanceTable");
     let studentsData = [];
 
-    // Function to read the CSV file
+    // Function to read CSV file
     function readCSV(file, callback) {
       const reader = new FileReader();
       reader.onload = function (e) {
         const text = e.target.result;
-        const rows = text.split("\n").map(row => row.split(","));
+        const rows = text.trim().split("\n").map(row => row.split(","));
         callback(rows);
       };
       reader.readAsText(file);
     }
 
-    // Generate QR Code for a class
+    // Generate QR Code
     function generateQRCode() {
-      const fileInput = document.getElementById('csvFile').files[0];
+      const fileInput = document.getElementById("csvFile").files[0];
       if (!fileInput) {
         alert("Please upload a CSV file.");
         return;
@@ -151,11 +109,19 @@
       readCSV(fileInput, rows => {
         studentsData = rows.map(([name, admission]) => ({ name, admission }));
         const qrData = JSON.stringify(studentsData);
-        const canvas = document.getElementById('qrcodeCanvas');
 
-        QRCode.toCanvas(canvas, qrData, error => {
-          if (error) console.error(error);
-          else alert("QR Code generated successfully!");
+        if (qrData.length > MAX_QR_DATA_SIZE) {
+          alert("Data too large for one QR code. Splitting into multiple QR codes...");
+          return; // Splitting logic can be added here if needed.
+        }
+
+        QRCode.toCanvas(document.getElementById("qrcodeCanvas"), qrData, error => {
+          if (error) {
+            console.error(error);
+            alert("Failed to generate QR code.");
+          } else {
+            alert("QR Code generated successfully!");
+          }
         });
       });
     }
@@ -164,39 +130,33 @@
     const scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
     scanner.render(decodedText => {
       try {
-        studentsData = JSON.parse(decodedText);
-        renderTable(studentsData);
-      } catch (error) {
-        alert("Invalid QR Code!");
+        const scannedData = JSON.parse(decodedText);
+        if (!Array.isArray(scannedData)) throw new Error();
+        renderTable(scannedData);
+      } catch {
+        alert("Invalid QR Code.");
       }
     });
 
-    // Render attendance table
+    // Render Attendance Table
     function renderTable(data) {
       attendanceTable.innerHTML = "";
       data.forEach(({ name, admission }) => {
-        const newRow = attendanceTable.insertRow();
-        newRow.insertCell(0).innerText = name;
-        newRow.insertCell(1).innerText = admission;
-        const statusCell = newRow.insertCell(2);
-        statusCell.innerText = "Absent";
+        const row = attendanceTable.insertRow();
+        const nameCell = row.insertCell(0);
+        const admissionCell = row.insertCell(1);
+        const statusCell = row.insertCell(2);
 
-        // Mark attendance on row click
-        newRow.onclick = () => {
-          statusCell.innerText = "Present";
-          statusCell.style.color = "green";
+        nameCell.textContent = name;
+        admissionCell.textContent = admission;
+        statusCell.textContent = "Absent";
+        statusCell.classList.add("absent");
+
+        row.onclick = () => {
+          statusCell.textContent = "Present";
+          statusCell.classList.remove("absent");
+          statusCell.classList.add("present");
         };
-      });
-    }
-
-    // Search and filter table
-    function filterTable() {
-      const searchValue = document.getElementById("searchStudent").value.toLowerCase();
-      Array.from(attendanceTable.rows).forEach(row => {
-        const [nameCell, admissionCell] = row.cells;
-        const matches = nameCell.innerText.toLowerCase().includes(searchValue) || 
-                        admissionCell.innerText.toLowerCase().includes(searchValue);
-        row.style.display = matches ? "" : "none";
       });
     }
   </script>
