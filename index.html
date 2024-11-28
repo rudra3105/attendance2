@@ -185,7 +185,7 @@
         // Check if already marked
         const existingRow = [...attendanceTable.rows].find(row => row.cells[1].innerText === admission);
         if (existingRow) {
-          alert(${name} has already been marked present.);
+          alert(`${name} has already been marked present.`);
           return;
         }
 
@@ -198,7 +198,7 @@
         // Save to localStorage
         saveAttendanceToLocalStorage();
 
-        document.getElementById('scanResult').innerText = Marked Present: ${name};
+        document.getElementById('scanResult').innerText = `Marked Present: ${name}`;
       } catch (error) {
         alert("Invalid QR Code!");
       }
