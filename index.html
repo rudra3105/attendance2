@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>QR Code Attendance System</title>
+  <title>Class-wise QR Code Attendance</title>
   <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html5-qrcode/minified/html5-qrcode.min.js"></script>
   <style>
@@ -11,12 +11,11 @@
       font-family: 'Poppins', sans-serif;
       margin: 0;
       padding: 0;
-      background: linear-gradient(to right, #6a11cb, #2575fc);
-      color: #fff;
+      background: #f4f4f4;
+      color: #333;
     }
     h1, h2 {
       text-align: center;
-      font-weight: 600;
       margin-bottom: 10px;
     }
     .container {
@@ -29,19 +28,19 @@
       padding: 20px;
     }
     .form-group {
-      display: flex;
-      flex-direction: column;
       margin: 15px 0;
     }
     .form-group label {
+      font-weight: bold;
+      display: block;
       margin-bottom: 5px;
-      font-weight: 500;
     }
     .form-group input {
       padding: 10px;
       font-size: 16px;
       border: 1px solid #ddd;
       border-radius: 5px;
+      width: 100%;
     }
     button {
       padding: 10px 15px;
@@ -89,20 +88,19 @@
     tbody tr:nth-child(even) {
       background: #efefef;
     }
+    .search-bar {
+      margin-bottom: 15px;
+    }
   </style>
 </head>
 <body>
-  <h1>QR Code Attendance System</h1>
+  <h1>Class-wise QR Code Attendance</h1>
 
   <div class="container">
     <h2>Generate QR Code</h2>
     <div class="form-group">
-      <label for="studentName">Student Name</label>
-      <input type="text" id="studentName" placeholder="Enter Student Name">
-    </div>
-    <div class="form-group">
-      <label for="admissionNumber">Admission Number</label>
-      <input type="text" id="admissionNumber" placeholder="Enter Admission Number">
+      <label for="csvFile">Upload CSV File</label>
+      <input type="file" id="csvFile" accept=".csv">
     </div>
     <button onclick="generateQRCode()">Generate QR Code</button>
     <canvas id="qrcodeCanvas"></canvas>
@@ -111,11 +109,10 @@
   <div class="container">
     <h2>Scan QR Code</h2>
     <div id="reader"></div>
-    <p id="scanResult" style="font-weight: bold; color: #2575fc; text-align: center; margin-top: 10px;"></p>
-  </div>
-
-  <div class="container">
-    <h2>Attendance Sheet</h2>
+    <div class="form-group search-bar">
+      <label for="searchStudent">Search Student</label>
+      <input type="text" id="searchStudent" placeholder="Search by name or admission number" onkeyup="filterTable()">
+    </div>
     <table>
       <thead>
         <tr>
@@ -130,79 +127,78 @@
 
   <script>
     const attendanceTable = document.getElementById('attendanceTable');
+    let studentsData = [];
 
-    // Load attendance from localStorage on page load
-    window.onload = function () {
-      const data = localStorage.getItem('attendanceData');
-      if (data) {
-        const attendance = JSON.parse(data);
-        attendance.forEach(({ name, admission, status }) => {
-          const newRow = attendanceTable.insertRow();
-          newRow.insertCell(0).innerText = name;
-          newRow.insertCell(1).innerText = admission;
-          newRow.insertCell(2).innerText = status;
-        });
-      }
-    };
-
-    // Save attendance to localStorage
-    function saveAttendanceToLocalStorage() {
-      const rows = [...attendanceTable.rows].map(row => ({
-        name: row.cells[0].innerText,
-        admission: row.cells[1].innerText,
-        status: row.cells[2].innerText
-      }));
-      localStorage.setItem('attendanceData', JSON.stringify(rows));
+    // Function to read the CSV file
+    function readCSV(file, callback) {
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const text = e.target.result;
+        const rows = text.split("\n").map(row => row.split(","));
+        callback(rows);
+      };
+      reader.readAsText(file);
     }
 
-    // Generate QR Code
+    // Generate QR Code for a class
     function generateQRCode() {
-      const name = document.getElementById('studentName').value.trim();
-      const admission = document.getElementById('admissionNumber').value.trim();
-
-      if (!name || !admission) {
-        alert("Please enter both Student Name and Admission Number.");
+      const fileInput = document.getElementById('csvFile').files[0];
+      if (!fileInput) {
+        alert("Please upload a CSV file.");
         return;
       }
 
-      const qrData = JSON.stringify({ name, admission });
-      const canvas = document.getElementById('qrcodeCanvas');
+      readCSV(fileInput, rows => {
+        studentsData = rows.map(([name, admission]) => ({ name, admission }));
+        const qrData = JSON.stringify(studentsData);
+        const canvas = document.getElementById('qrcodeCanvas');
 
-      QRCode.toCanvas(canvas, qrData, (error) => {
-        if (error) console.error(error);
-        console.log("QR Code generated!");
+        QRCode.toCanvas(canvas, qrData, error => {
+          if (error) console.error(error);
+          else alert("QR Code generated successfully!");
+        });
       });
     }
 
     // QR Code Scanner
     const scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
-
-    scanner.render((decodedText) => {
+    scanner.render(decodedText => {
       try {
-        const data = JSON.parse(decodedText);
-        const { name, admission } = data;
-
-        // Check if already marked
-        const existingRow = [...attendanceTable.rows].find(row => row.cells[1].innerText === admission);
-        if (existingRow) {
-          alert(`${name} has already been marked present.`);
-          return;
-        }
-
-        // Add to attendance table
-        const newRow = attendanceTable.insertRow();
-        newRow.insertCell(0).innerText = name;
-        newRow.insertCell(1).innerText = admission;
-        newRow.insertCell(2).innerText = "Present";
-
-        // Save to localStorage
-        saveAttendanceToLocalStorage();
-
-        document.getElementById('scanResult').innerText = `Marked Present: ${name}`;
+        studentsData = JSON.parse(decodedText);
+        renderTable(studentsData);
       } catch (error) {
         alert("Invalid QR Code!");
       }
     });
+
+    // Render attendance table
+    function renderTable(data) {
+      attendanceTable.innerHTML = "";
+      data.forEach(({ name, admission }) => {
+        const newRow = attendanceTable.insertRow();
+        newRow.insertCell(0).innerText = name;
+        newRow.insertCell(1).innerText = admission;
+        const statusCell = newRow.insertCell(2);
+        statusCell.innerText = "Absent";
+
+        // Mark attendance on row click
+        newRow.onclick = () => {
+          statusCell.innerText = "Present";
+          statusCell.style.color = "green";
+        };
+      });
+    }
+
+    // Search and filter table
+    function filterTable() {
+      const searchValue = document.getElementById("searchStudent").value.toLowerCase();
+      Array.from(attendanceTable.rows).forEach(row => {
+        const [nameCell, admissionCell] = row.cells;
+        const matches = nameCell.innerText.toLowerCase().includes(searchValue) || 
+                        admissionCell.innerText.toLowerCase().includes(searchValue);
+        row.style.display = matches ? "" : "none";
+      });
+    }
   </script>
 </body>
 </html>
